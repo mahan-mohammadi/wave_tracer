@@ -1,4 +1,4 @@
-# Wave-optical renderer - Phases 1-3 (in progress): foundation, propagation, validation scenes
+# Wave-optical renderer - Phases 1-3: foundation, propagation, validation scenes (all six Phase 3 scenes done)
 
 C17 + OpenMP. No dependencies beyond libc/libm.
 
@@ -84,3 +84,46 @@ Limits: scalar; paraxial reference formulas; small-angle tilt model; ideal mirro
 (no dispersion, absorption, or polarization). The tilted-mirror port power (0.0156) has no
 independent closed form in this test; the field itself is validated by check 2.
 Partial coherence is handled by adding intensities across wavelengths and amplitudes within each.
+
+## Phase 3, scenes 5 and 6: thin film and Newton's rings (tests/test_film.c, tests/test_newton.c)
+New module wr_film.h: normal-incidence Fresnel coefficients (pi shift = sign of r) and single-layer
+reflection by explicit coherent sum of partial waves, checked against the closed-form Airy result.
+Normal incidence, scalar, lossless, non-dispersive indices only.
+
+Thin film / multiple reflections (reference = closed-form optics, independent of the code):
+| Check | Result |
+|---|---|
+| Partial-wave series (200 terms) vs Airy, 6400 films | 9.5e-16 |
+| R + T = 1 over the same films | 8.9e-16 |
+| Soap film n=1.33, d=400 nm: maxima 425.600 / 709.333 nm, minimum 532.000 nm | exact to 0.001 nm |
+| Peak reflectance 0.07711 vs closed form (two-beam estimate 0.08024 is 4% too high) | 1e-12 |
+| Quarter-wave MgF2 coating, R = 1.26008% (formula 1.26008%), bare glass 4.258% | 1e-13 |
+
+Newton's rings: lens R = 1 m on a flat plate, lambda = 500 nm, exact sphere gap h(r), 512x512 at 12.5 um.
+No ring formula is in the code. Dark radii r_m = sqrt(m lambda R / n_gap), bright radii sqrt((m - 1/2) lambda R / n_gap).
+| Case | Worst ring-radius error (14-16 dark + 14-16 bright rings) | I_max (all partial waves vs two-beam) |
+|---|---|---|
+| air gap | 0.187 um (ring spacing 90-700 um, pixel 12.5 um) | 0.14793 (two-beam 4r^2 would be 0.16) |
+| water gap n=1.33 | 0.227 um | 0.01433 |
+Centre is dark (pi shift) to < 1e-4 of the maximum. R + T - 1 < 2e-15 at every pixel.
+Limits: thin-element (local film) approximation, valid while gap slope r/R << 1 (here <= 3.2e-3);
+errors are bounded by pixel sampling (about 2% of a pixel) and there is a small unexplained sign bias for air.
+Output: build/newton_rings.ppm.
+
+## Phase 3, scene 3: Young's experiment with an extended incoherent source (tests/test_young.c)
+Line source of width s (71 emitters 50 um apart, each a 1-pixel slit), z0 = 500 mm to two slits
+(a = 6 um, d = 100 um), z = 200 mm to the screen. Source->slits and slits->screen both go through the
+band-limited propagator. Amplitudes are added within an emitter, intensities across emitters.
+Signed visibility V = (I(0) - I(lambda z/2d)) / (I(0) + I(lambda z/2d)); theory V = sinc(s d / (lambda z0)).
+| s (mm) | u | V simulated | V reference (quadrature) | sinc(u) |
+|---|---|---|---|---|
+| 0.05 | 0.020 | +1.0000 | +1.0000 | +0.9993 |
+| 0.55 | 0.220 | +0.9230 | +0.9231 | +0.9223 |
+| 1.25 | 0.500 | +0.6380 | +0.6380 | +0.6366 |
+| 2.05 | 0.820 | +0.2099 | +0.2099 | +0.2080 |
+| 2.55 | 1.020 | -0.0175 | -0.0175 | -0.0196 |
+| 3.55 | 1.420 | -0.2151 | -0.2150 | -0.2171 |
+max |V_sim - V_ref| = 1.0e-4; max |V_sim - sinc| = 2.1e-3 (finite slit width a/d = 6%, included exactly in the
+reference); normalized pattern difference 7e-4. Fringes wash out at u = 1 and the contrast reverses beyond it.
+Window finding: with a 32.8 mm window the discrepancy was 2.9e-3 (band-limit cutoff acting on the emitter's flat
+spectrum); 65.5 mm gives 1.0e-4 and 131 mm the same, so 65.5 mm is used.
