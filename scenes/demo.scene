@@ -1,0 +1,20 @@
+# Demo scene for the geometry layer: a BK7 prism and lens on a mirror table, lit by a three-line source.
+# Coefficients: Schott BK7 Sellmeier (lambda in micrometres inside the formula).
+time 0
+material air   constant 1.000277 range 3e-7 1e-6
+ambient air
+material bk7   sellmeier 1.03961212 0.231792344 1.01046945 0.00600069867 0.0200179144 103.560653
+material table ideal_mirror
+material wall  absorber
+material tint  constant 1.5 extinction 2e-6
+
+mesh   prism  material bk7  obj prism.obj  translate 0 0 0
+sphere lens   material bk7  center 0.1 0.02 0 radius 0.02
+mesh   slab   material tint box 0.04 0 -0.05 0.07 0.01 -0.03 rotate 0 1 0 20
+plane  floor  material table point 0 -0.001 0 normal 0 1 0
+plane  back   material wall  point 0 0 -0.3 normal 0 0 1
+
+light plane_wave src  direction 1 0 0  position -0.2 0.02 0  lines 3 450e-9 1 550e-9 2 650e-9 1  amplitude 2  jones 1 0 0 0
+light gaussian   beam direction 0 -1 0 position 0.1 0.2 0 waist 1e-3 wavelength 633e-9 coherence_length 0.3
+
+camera pinhole position 0.05 0.12 0.35 look_at 0.05 0.015 0 up 0 1 0 vfov_deg 45 size 160 120
